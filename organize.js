@@ -1,13 +1,9 @@
 import { existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { exiftool } from 'exiftool-vendored';
+import { IMAGE_EXTENSIONS } from './constants.js';
+import createNewPath from './createNewPath.js';
 import padNumber from './padNumber.js';
-import logFileInfo from './logFileInfo.js';
-
-// Regex patterns for file filtering
-const IMAGE_EXTENSIONS = /\.(jpe?g|CR2|NEF|ARW|png)$/i;
-const RAW_EXTENSIONS = /\.(CR2|NEF|ARW)$/i;
-const COMPRESSED_EXTENSIONS = /\.(jpe?g|png)$/i;
 
 // Get folder path from command line
 const folderPath = process.argv[2];
@@ -30,38 +26,46 @@ console.log(`Reading files from: ${folderPath}`);
 const files = readdirSync(folderPath);
 // Filter to keep image files only (.jpg, .jpeg, .CR2, .NEF, .ARW, .png)
 const imageFiles = files.filter(file => IMAGE_EXTENSIONS.test(file));
-// Extract the date from the first photo's EXIF data
-// and format it as YYYY_MM_DD
-const firstPhoto = join(folderPath, imageFiles[0]);
+// Create an empty object to organize photos by date
+const photosByDate = {};
+// Extract the date
 try {
-  const tags = await exiftool.read(firstPhoto);
+  for (const image of imageFiles) {
+    const fullPath = join(folderPath, image);
+    const tags = await exiftool.read(fullPath);
+    
+    // Check for parsing warnings
+    if (tags.errors && tags.errors.length > 0) {
+      console.warn("Metadata warnings:", tags.errors);
+    }
   
-  // Check for parsing warnings
-  if (tags.errors && tags.errors.length > 0) {
-    console.warn("Metadata warnings:", tags.errors);
+    const year = tags.DateTimeOriginal.year;
+    // Pass the month and day to the padNumber() function
+    // to enforce two-character value 
+    const month = padNumber(tags.DateTimeOriginal.month);
+    const day = padNumber(tags.DateTimeOriginal.day);
+    const fullDate = `${year}_${month}_${day}`;
+
+    // Check if an array already exists for the given date...
+    if (!photosByDate[fullDate]) {
+      photosByDate[fullDate] = [];  // ... if not, create it
+    }
+    photosByDate[fullDate].push(image);  // Add current file to array
   }
-
-  const year = tags.DateTimeOriginal.year;
-  // Pass the month and day to the padNumber() function
-  // to enforce two-character value 
-  const month = padNumber(tags.DateTimeOriginal.month);
-  const day = padNumber(tags.DateTimeOriginal.day);
-  const fullDate = `${year}_${month}_${day}`;
-
-  console.log("Date from EXIF: " + fullDate + "\n");
-
-  // Shut down the `exiftool` child process so node can exit cleanly
-  await exiftool.end();
 } catch (error) {
   console.error("Failed to read file:", error.message);
 }
-// Store jpg/jpeg/png files and raw files in two separate arrays
-const rawFiles = imageFiles.filter(file => RAW_EXTENSIONS.test(file));
-const compressedFiles = imageFiles.filter(file => COMPRESSED_EXTENSIONS.test(file));
-// Print each image filename on a separate line with stats and additional info
-console.log(`RAW files (${rawFiles.length}):`);
-logFileInfo(rawFiles, folderPath);
-console.log(`\nCompressed files (${compressedFiles.length}):`);
-logFileInfo(compressedFiles, folderPath);
+// Shut down the `exiftool` child process so node can exit cleanly
+await exiftool.end();
 
-console.log(`\nTotal: ${imageFiles.length} image files`);
+// Log old and new paths
+for (const date in photosByDate) {
+  // Log date of current batch of photos
+  console.log(`=== Photos from ${date} (${photosByDate[date].length} file${photosByDate[date].length > 1 ? "s" : ""}) ===`);
+  // Loop through the array of photos from the current date
+  for (const photo of photosByDate[date]) {
+    const fullPath = join(folderPath, photo);
+    const newPath = createNewPath(folderPath, date, photo);
+    console.log(`OLD: ${fullPath}\nNEW: ${newPath}`);
+  }
+}
