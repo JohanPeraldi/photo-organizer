@@ -13,8 +13,8 @@ export default function createNewPath(filePath, date, fileName) {
   // 3. Extract extension
   const ext = extname(fileName);
   // 4. Build path: folderPath/2025_10_26/2025_10_26-raw/2025_10_26_5498.CR2
-  const newFilePath = `${filePath}/${date}/${date}-${isRaw ? "raw" : "cmp"}/${date}_${fileNumber}${ext}`;
+  const newFilePath = `${filePath}/${date}/${date}-${isRaw ? "raw" : "jpg"}/${date}_${fileNumber}${ext}`;
+  
   // 5. Return the new path
-
   return newFilePath;
 }

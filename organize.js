@@ -1,9 +1,25 @@
-import { existsSync, readdirSync } from 'fs';
+import { createInterface } from 'readline';
+import { existsSync, mkdirSync, readdirSync, renameSync } from 'fs';
 import { join } from 'path';
 import { exiftool } from 'exiftool-vendored';
-import { IMAGE_EXTENSIONS } from './constants.js';
+import { COMPRESSED_EXTENSIONS, IMAGE_EXTENSIONS, RAW_EXTENSIONS } from './constants.js';
 import createNewPath from './createNewPath.js';
 import padNumber from './padNumber.js';
+
+// Function to ask user for confirmation before moving files
+async function askConfirmation(question) {
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
+    });
+  });
+}
 
 // Get folder path from command line
 const folderPath = process.argv[2];
@@ -69,3 +85,92 @@ for (const date in photosByDate) {
     console.log(`OLD: ${fullPath}\nNEW: ${newPath}`);
   }
 }
+
+console.log('\n'); // Blank line for readability
+
+const confirmed = await askConfirmation('Proceed with organising files? (y/n): ');
+
+if (!confirmed) {
+  console.log('Operation cancelled');
+  await exiftool.end();
+  process.exit(0);
+}
+
+console.log('\n'); // Another blank line for readability
+
+// Create parent folders for every new date and
+// child folders inside them for raw and compressed (jpg) files
+for (const date in photosByDate) {
+  const dateFolder = join(folderPath, date);
+
+  // Check which file types exist for the current date
+  const hasRaw = photosByDate[date].some(file => RAW_EXTENSIONS.test(file));
+  const hasJpg = photosByDate[date].some(file => COMPRESSED_EXTENSIONS.test(file));
+
+  try {
+    // Always create the date folder
+    mkdirSync(dateFolder, { recursive: true });
+    
+    // Only create a -raw folder if there are RAW files
+    if (hasRaw) {
+      const rawFolder = join(dateFolder, `${date}-raw`);
+      mkdirSync(rawFolder, { recursive: true });
+    }
+    
+    // Only create a -jpg folder if there are JPG files
+    if (hasJpg) {
+      const jpgFolder = join(dateFolder, `${date}-jpg`);
+      mkdirSync(jpgFolder, { recursive: true });
+    }
+
+    console.log(`✅ Created folders for ${date} (${hasRaw ? 'RAW' : ''}${hasRaw && hasJpg ? ' + ' : ''}${hasJpg ? 'JPG' : ''})`);
+  } catch (err) {
+    console.error(`❌ Error creating folders for ${date}:`, err.message);
+  }
+};
+
+// Move and rename files
+console.log('\nMoving files...');
+
+let successCount = 0;
+let skippedCount = 0;
+let errorCount = 0;
+
+for (const date in photosByDate) {
+  console.log(`\nProcessing ${date}...`);
+
+  for (const photo of photosByDate[date]) {
+    try {
+      const oldPath = join(folderPath, photo);
+      const newPath = createNewPath(folderPath, date, photo);
+
+      // Check if destination file already exists
+      if (existsSync(newPath)) {
+        console.log(` ⏩️ ${photo} - destination already exists, skipping`);
+        skippedCount++;
+        continue;
+      }
+
+      // Move the file
+      renameSync(oldPath, newPath);
+      console.log(` ✅ ${photo} -> ${newPath.split('/').pop()}`);
+      successCount++;
+    } catch(error) {
+      console.log(` ❌ ${photo} - Error: ${error.message}`);
+      errorCount++;
+    }
+  }
+}
+
+// Print summary
+console.log('\n===================');
+console.log('Operation Complete!');
+console.log('===================\n');
+console.log(`✅ Successfully moved: ${successCount} files`);
+if (skippedCount > 0) {
+  console.log(`⏩️ Skipped (already exists): ${skippedCount} files`);
+}
+if (errorCount > 0) {
+  console.log(`❌ Errors: ${errorCount} files`);
+}
+console.log('');
