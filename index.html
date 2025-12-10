@@ -132,12 +132,113 @@
         border-left: 4px solid #388e3c;
       }
 
+      .status-message.error {
+        background: #ffebee;
+        color: #c62828;
+        border-left: 4px solid #c62828;
+      }
+
+      .status-message.warning {
+        background: #fff3e0;
+        color: #e65100;
+        border-left: 4px solid #e65100;
+      }
+
       .secondary-btn {
         background: #6c757d !important;
       }
 
       .secondary-btn:hover {
         background: #5a6268 !important;
+      }
+
+      .results {
+        display: none;
+        margin-top: 20px;
+      }
+
+      .results.visible {
+        display: block;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 15px;
+        border-radius: 6px;
+        border: 1px solid #e0e0e0;
+      }
+
+      .stat-number {
+        font-size: 28px;
+        font-weight: bold;
+        color: #667eea;
+      }
+
+      .stat-label {
+        font-size: 14px;
+        color: #666;
+        margin-top: 5px;
+      }
+
+      .preview-list {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        margin-top: 15px;
+      }
+
+      .preview-item {
+        padding: 10px;
+        margin: 5px 0;
+        background: white;
+        border-radius: 4px;
+        font-size: 13px;
+        font-family: 'Monaco', 'Courier New', monospace;
+      }
+
+      .preview-item .old {
+        color: #666;
+      }
+
+      .preview-item .arrow {
+        color: #667eea;
+        margin: 0 10px;
+      }
+
+      .preview-item .new {
+        color: #333;
+      }
+
+      .loading {
+        display: inline-block;
+        margin-left: 10px;
+      }
+
+      .spinner {
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #667eea;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+        vertical-align: middle;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
       }
     </style>
   </head>
@@ -172,6 +273,14 @@
         <button id="analyseBtn">🔍 Analyse Photos</button>
         <button id="clearBtn" class="secondary-btn">✖ Clear Selection</button>
       </div>
+
+      <div class="results" id="results">
+        <div class="card">
+          <h2 style="margin-bottom: 15px; color: #333">Analysis Results</h2>
+
+          <div id="resultsContent"></div>
+        </div>
+      </div>
     </div>
 
     <script>
@@ -183,6 +292,8 @@
       const actionButtons = document.getElementById('actionButtons');
       const analyseBtn = document.getElementById('analyseBtn');
       const clearBtn = document.getElementById('clearBtn');
+      const results = document.getElementById('results');
+      const resultsContent = document.getElementById('resultsContent');
 
       let selectedFolder = null;
 
@@ -198,6 +309,7 @@
           statusMessage.textContent = '✅ Folder selected! Ready to analyse.';
           statusMessage.className = 'status-message success visible';
           actionButtons.style.display = 'flex';
+          results.classList.remove('visible');
         }
       });
 
@@ -209,14 +321,125 @@
         statusMessage.textContent = 'Select a folder to get started';
         statusMessage.className = 'status-message info visible';
         actionButtons.style.display = 'none';
+        results.classList.remove('visible');
       });
 
-      // Handle analyse button (placeholder for now)
-      analyseBtn.addEventListener('click', () => {
-        alert(
-          `Will analyse: ${selectedFolder}\n\nNext milestone: We'll connect your organize.js logic here!`
-        );
+      // Handle analyse button
+      analyseBtn.addEventListener('click', async () => {
+        // Show loading state
+        analyseBtn.disabled = true;
+        analyseBtn.innerHTML = '🔍 Analyzing... <span class="spinner"></span>';
+        statusMessage.textContent = '⏳ Reading photos and EXIF data...';
+        statusMessage.className = 'status-message info visible';
+        results.classList.remove('visible');
+
+        try {
+          const result = await window.electronAPI.analysePhotos(selectedFolder);
+
+          if (result.success) {
+            displayResults(result);
+            statusMessage.textContent = '✅ Analysis complete!';
+            statusMessage.className = 'status-message success visible';
+          } else {
+            statusMessage.textContent = `❌ Error: ${result.error}`;
+            statusMessage.className = 'status-message error visible';
+            resultsContent.innerHTML = `<p style="color: #c62828;">${result.error}</p>`;
+            results.classList.add('visible');
+          }
+        } catch (error) {
+          statusMessage.textContent = `❌ Unexpected error: ${error.message}`;
+          statusMessage.className = 'status-message error visible';
+        } finally {
+          analyseBtn.disabled = false;
+          analyseBtn.innerHTML = '🔍 analyse Photos';
+        }
       });
+
+      function displayResults(result) {
+        let html = '';
+
+        // Statistics
+        html += `
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-number">${result.imageFiles}</div>
+            <div class="stat-label">Image Files</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">${result.rawFiles}</div>
+            <div class="stat-label">RAW Files</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">${result.jpegFiles}</div>
+            <div class="stat-label">JPEG Files</div>
+          </div>
+        </div>
+      `;
+
+        // Show unique dates found
+        if (result.uniqueDates && result.uniqueDates.length > 0) {
+          html += `
+            <div class="status-message success visible">
+              📅 Found ${result.uniqueDates.length} unique date${
+            result.uniqueDates.length > 1 ? 's' : ''
+          }: <strong>${result.uniqueDates.join(', ')}</strong>
+            </div>
+          `;
+        }
+
+        // Show warning for files without EXIF
+        if (result.filesWithoutExif > 0) {
+          html += `
+            <div class="status-message warning visible">
+              ⚠️ ${result.filesWithoutExif} file${
+            result.filesWithoutExif > 1 ? 's' : ''
+          } without EXIF data (will be skipped)
+            </div>
+          `;
+        }
+
+        // Preview of operations
+        if (result.previewOperations && result.previewOperations.length > 0) {
+          html += `
+          <h3 style="margin-top: 20px; margin-bottom: 10px; color: #333;">Preview (first ${result.previewOperations.length} files):</h3>
+          <div class="preview-list">
+        `;
+
+          result.previewOperations.forEach((op) => {
+            html += `
+            <div class="preview-item">
+              <div class="old">${op.oldName}</div>
+              <div class="arrow">↓</div>
+              <div class="new">${op.newPath
+                .split('/')
+                .slice(-2)
+                .join('/')}</div>
+              ${
+                op.date
+                  ? `<div style="color: #667eea; font-size: 11px; margin-top: 5px;">📅 ${op.date}</div>`
+                  : ''
+              }
+              ${
+                op.error
+                  ? `<div style="color: #e65100; font-size: 11px; margin-top: 5px;">⚠️ ${op.error}</div>`
+                  : ''
+              }
+            </div>
+          `;
+          });
+
+          html += `</div>`;
+
+          if (result.hasMoreFiles) {
+            html += `<p style="color: #666; margin-top: 10px; font-size: 14px;">... and ${
+              result.imageFiles - 5
+            } more files</p>`;
+          }
+        }
+
+        resultsContent.innerHTML = html;
+        results.classList.add('visible');
+      }
 
       // Show initial message
       statusMessage.classList.add('visible');

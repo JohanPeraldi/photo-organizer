@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { analyseFolder } from './photo-service.js';
 
 // ES modules don't have __dirname, so we create it
 const __filename = fileURLToPath(import.meta.url);
@@ -33,6 +34,11 @@ ipcMain.handle('dialog:openFolder', async () => {
     return result.filePaths[0];
   }
   return null;
+});
+
+// Handle photo analysis
+ipcMain.handle('photos:analyse', async (event, folderPath) => {
+  return await analyseFolder(folderPath);
 });
 
 app.whenReady().then(() => {
