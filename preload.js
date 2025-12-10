@@ -1,4 +1,9 @@
-// Preload script
-console.log('Preload script loaded');
+const { contextBridge, ipcRenderer } = require('electron');
 
-// We'll add the bridge between main and renderer here later
+// Expose protected methods that allow the renderer process to use
+// the ipcRenderer without exposing the entire object
+contextBridge.exposeInMainWorld('electronAPI', {
+  selectFolder: () => ipcRenderer.invoke('dialog:openFolder')
+});
+
+console.log('Preload script loaded successfully!');
