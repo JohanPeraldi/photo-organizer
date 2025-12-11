@@ -20,8 +20,10 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
   
-  // Open DevTools during development
-  mainWindow.webContents.openDevTools();
+  // Only open DevTools in development
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools();
+  }
 }
 
 // Handle folder selection
@@ -38,12 +40,30 @@ ipcMain.handle('dialog:openFolder', async () => {
 
 // Handle photo analysis
 ipcMain.handle('photos:analyze', async (event, folderPath) => {
-  return await analyzeFolder(folderPath);
+  try {
+    const result = await analyzeFolder(folderPath);
+    return result;
+  } catch (error) {
+    console.error('Error in photos:analyze handler:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 });
 
 // Handle photo organization
 ipcMain.handle('photos:organize', async (event, folderPath) => {
-  return await organizePhotos(folderPath);
+  try {
+    const result = await organizePhotos(folderPath);
+    return result;
+  } catch (error) {
+    console.error('Error in photos:organize handler:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 });
 
 app.whenReady().then(() => {

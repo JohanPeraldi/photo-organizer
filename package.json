@@ -5,7 +5,40 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "build": {
+    "appId": "com.johanperaldi.photo-organizer",
+    "productName": "Photo organizer",
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/exiftool-vendored/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "photo-service.js",
+      "organize.js",
+      "constants.js",
+      "createNewPath.js",
+      "extractFileNumber.js",
+      "padNumber.js",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    }
   },
   "keywords": [],
   "author": "Johan Peraldi",
@@ -15,6 +48,7 @@
     "exiftool-vendored": "^33.2.0"
   },
   "devDependencies": {
-    "electron": "^39.2.6"
+    "electron": "^39.2.6",
+    "electron-builder": "^26.0.12"
   }
 }

@@ -26,17 +26,13 @@ const folderPath = process.argv[2];
 
 // Check if folder was provided
 if (!folderPath) {
-  console.log('Usage: node organize.js /path/to/photos');
   process.exit(1);
 }
 
 // Check if folder exists
 if (!existsSync(folderPath)) {
-  console.log(`Error: Folder "${folderPath}" does not exist`);
   process.exit(1);
 }
-
-console.log(`Reading files from: ${folderPath}`);
 
 // Read all files in the folder using fs.readdirSync()
 const files = readdirSync(folderPath);
@@ -76,27 +72,19 @@ await exiftool.end();
 
 // Log old and new paths
 for (const date in photosByDate) {
-  // Log date of current batch of photos
-  console.log(`=== Photos from ${date} (${photosByDate[date].length} file${photosByDate[date].length > 1 ? "s" : ""}) ===`);
   // Loop through the array of photos from the current date
   for (const photo of photosByDate[date]) {
     const fullPath = join(folderPath, photo);
     const newPath = createNewPath(folderPath, date, photo);
-    console.log(`OLD: ${fullPath}\nNEW: ${newPath}`);
   }
 }
 
-console.log('\n'); // Blank line for readability
-
-const confirmed = await askConfirmation('Proceed with organising files? (y/n): ');
+const confirmed = await askConfirmation('Proceed with organizing files? (y/n): ');
 
 if (!confirmed) {
-  console.log('Operation cancelled');
   await exiftool.end();
   process.exit(0);
 }
-
-console.log('\n'); // Another blank line for readability
 
 // Create parent folders for every new date and
 // child folders inside them for raw and compressed (jpg) files
@@ -122,23 +110,17 @@ for (const date in photosByDate) {
       const jpgFolder = join(dateFolder, `${date}-jpg`);
       mkdirSync(jpgFolder, { recursive: true });
     }
-
-    console.log(`✅ Created folders for ${date} (${hasRaw ? 'RAW' : ''}${hasRaw && hasJpg ? ' + ' : ''}${hasJpg ? 'JPG' : ''})`);
   } catch (err) {
     console.error(`❌ Error creating folders for ${date}:`, err.message);
   }
 };
 
 // Move and rename files
-console.log('\nMoving files...');
-
 let successCount = 0;
 let skippedCount = 0;
 let errorCount = 0;
 
 for (const date in photosByDate) {
-  console.log(`\nProcessing ${date}...`);
-
   for (const photo of photosByDate[date]) {
     try {
       const oldPath = join(folderPath, photo);
@@ -146,31 +128,15 @@ for (const date in photosByDate) {
 
       // Check if destination file already exists
       if (existsSync(newPath)) {
-        console.log(` ⏩️ ${photo} - destination already exists, skipping`);
         skippedCount++;
         continue;
       }
 
       // Move the file
       renameSync(oldPath, newPath);
-      console.log(` ✅ ${photo} -> ${newPath.split('/').pop()}`);
       successCount++;
     } catch(error) {
-      console.log(` ❌ ${photo} - Error: ${error.message}`);
       errorCount++;
     }
   }
 }
-
-// Print summary
-console.log('\n===================');
-console.log('Operation Complete!');
-console.log('===================\n');
-console.log(`✅ Successfully moved: ${successCount} files`);
-if (skippedCount > 0) {
-  console.log(`⏩️ Skipped (already exists): ${skippedCount} files`);
-}
-if (errorCount > 0) {
-  console.log(`❌ Errors: ${errorCount} files`);
-}
-console.log('');

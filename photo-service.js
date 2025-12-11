@@ -18,6 +18,8 @@ export async function analyzeFolder(folderPath) {
     // Filter for image files
     const imageFiles = files.filter(file => IMAGE_EXTENSIONS.test(file));
 
+    console.log(`Analyzing ${imageFiles.length} image files in ${folderPath}`);
+
     if (imageFiles.length === 0) {
       return {
         success: false,
@@ -35,9 +37,9 @@ export async function analyzeFolder(folderPath) {
     const allDates = new Set();
     const datesByFile = new Map();
 
-    for (const fileName of imageFiles) {
+    for (const fileName of imageFiles) {      
       try {
-        const fullPath = join(folderPath, fileName);
+        const fullPath = join(folderPath, fileName);        
         const tags = await exiftool.read(fullPath);
         
         if (tags.DateTimeOriginal) {
@@ -50,8 +52,7 @@ export async function analyzeFolder(folderPath) {
           datesByFile.set(fileName, fileDate);
         }
       } catch (err) {
-        // Skip files with EXIF errors
-        console.error(`Could not read EXIF from ${fileName}:`, err.message);
+        console.error(`Failed to read EXIF from ${fileName}:`, err.message);
       }
     }
 
@@ -87,6 +88,8 @@ export async function analyzeFolder(folderPath) {
     // Convert Set to sorted array
     const uniqueDates = Array.from(allDates).sort();
 
+    console.log(`Analysis complete: ${uniqueDates.length} unique dates found`);
+
     return {
       success: true,
       totalFiles: files.length,
@@ -100,6 +103,9 @@ export async function analyzeFolder(folderPath) {
     };
 
   } catch (error) {
+    console.error('[photo-service] FATAL ERROR:', error);
+    console.error('[photo-service] Error stack:', error.stack);
+    
     return {
       success: false,
       error: error.message
@@ -108,9 +114,7 @@ export async function analyzeFolder(folderPath) {
 }
 
 export async function organizePhotos(folderPath) {
-  try {
-    console.log('Starting organisation for:', folderPath);
-    
+  try {   
     // Check if folder exists
     if (!existsSync(folderPath)) {
       throw new Error(`Folder does not exist: ${folderPath}`);
@@ -119,8 +123,6 @@ export async function organizePhotos(folderPath) {
     // Read all files
     const files = readdirSync(folderPath);
     const imageFiles = files.filter(file => IMAGE_EXTENSIONS.test(file));
-
-    console.log('Found image files:', imageFiles.length);
 
     if (imageFiles.length === 0) {
       return {
@@ -135,7 +137,6 @@ export async function organizePhotos(folderPath) {
     for (const image of imageFiles) {
       try {
         const fullPath = join(folderPath, image);
-        console.log('Reading EXIF from:', image);
         const tags = await exiftool.read(fullPath);
         
         if (tags.DateTimeOriginal) {
@@ -148,14 +149,11 @@ export async function organizePhotos(folderPath) {
             photosByDate[fullDate] = [];
           }
           photosByDate[fullDate].push(image);
-          console.log(`Added ${image} to date ${fullDate}`);
         }
       } catch (error) {
         console.error(`Failed to read EXIF from ${image}:`, error.message);
       }
     }
-
-    console.log('Photos grouped by date:', Object.keys(photosByDate));
 
     // Create folders for each date
     for (const date in photosByDate) {
@@ -166,20 +164,17 @@ export async function organizePhotos(folderPath) {
       const hasJpg = photosByDate[date].some(file => COMPRESSED_EXTENSIONS.test(file));
 
       try {
-        console.log(`Creating folder: ${dateFolder}`);
         // Always create the date folder
         mkdirSync(dateFolder, { recursive: true });
         
         // Only create subfolders for file types that exist
         if (hasRaw) {
           const rawFolder = join(dateFolder, `${date}-raw`);
-          console.log(`Creating RAW folder: ${rawFolder}`);
           mkdirSync(rawFolder, { recursive: true });
         }
         
         if (hasJpg) {
           const jpgFolder = join(dateFolder, `${date}-jpg`);
-          console.log(`Creating JPG folder: ${jpgFolder}`);
           mkdirSync(jpgFolder, { recursive: true });
         }
       } catch (err) {
@@ -199,18 +194,14 @@ export async function organizePhotos(folderPath) {
           const oldPath = join(folderPath, photo);
           const newPath = createNewPath(folderPath, date, photo);
 
-          console.log(`Moving: ${oldPath} -> ${newPath}`);
-
           // Check if destination already exists
           if (existsSync(newPath)) {
-            console.log(`Skipping ${photo} - destination exists`);
             skippedCount++;
             continue;
           }
 
           // Move the file
           renameSync(oldPath, newPath);
-          console.log(`Successfully moved ${photo}`);
           successCount++;
         } catch (error) {
           console.error(`Error moving ${photo}:`, error.message);
@@ -220,7 +211,7 @@ export async function organizePhotos(folderPath) {
       }
     }
 
-    console.log(`Organisation complete: ${successCount} success, ${skippedCount} skipped, ${errorCount} errors`);
+    console.log(`Organization complete: ${successCount} success, ${skippedCount} skipped, ${errorCount} errors`);
 
     return {
       success: true,
@@ -233,7 +224,7 @@ export async function organizePhotos(folderPath) {
     };
 
   } catch (error) {
-    console.error('Organisation failed:', error.message);
+    console.error('organization failed:', error.message);
     return {
       success: false,
       error: error.message

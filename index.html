@@ -6,7 +6,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
     />
-    <title>Photo Organiser</title>
+    <title>Photo organizer</title>
     <style>
       * {
         margin: 0;
@@ -244,15 +244,15 @@
   </head>
   <body>
     <div class="container">
-      <h1>📸 Photo Organiser</h1>
+      <h1>📸 Photo organizer</h1>
       <p class="subtitle">
-        Automatically rename and organise your RAW and JPEG files
+        Automatically rename and organize your RAW and JPEG files
       </p>
 
       <div class="card" id="folderCard">
         <h2 style="margin-bottom: 15px; color: #333">Select Photo Folder</h2>
         <p style="color: #666; margin-bottom: 15px">
-          Choose the folder containing photos you want to organise
+          Choose the folder containing photos you want to organize
         </p>
 
         <button id="selectFolderBtn">📁 Choose Folder</button>
@@ -270,7 +270,7 @@
       </div>
 
       <div class="button-group" style="display: none" id="actionButtons">
-        <button id="analyseBtn">🔍 Analyse Photos</button>
+        <button id="analyzeBtn">🔍 Analyze Photos</button>
         <button id="clearBtn" class="secondary-btn">✖ Clear Selection</button>
       </div>
 
@@ -286,7 +286,7 @@
             id="organizeButtonGroup"
           >
             <button id="organizeBtn" style="background: #28a745">
-              ✨ Organise Photos
+              ✨ Organize Photos
             </button>
           </div>
         </div>
@@ -295,7 +295,7 @@
       <div class="results" id="finalResults">
         <div class="card">
           <h2 style="margin-bottom: 15px; color: #333">
-            ✅ Organisation Complete!
+            ✅ Organization complete!
           </h2>
 
           <div id="finalResultsContent"></div>
@@ -310,7 +310,7 @@
       const folderCard = document.getElementById('folderCard');
       const statusMessage = document.getElementById('statusMessage');
       const actionButtons = document.getElementById('actionButtons');
-      const analyseBtn = document.getElementById('analyseBtn');
+      const analyzeBtn = document.getElementById('analyzeBtn');
       const clearBtn = document.getElementById('clearBtn');
       const results = document.getElementById('results');
       const resultsContent = document.getElementById('resultsContent');
@@ -334,7 +334,7 @@
           folderPath.textContent = folder;
           folderInfo.classList.add('visible');
           folderCard.classList.add('has-folder');
-          statusMessage.textContent = '✅ Folder selected! Ready to analyse.';
+          statusMessage.textContent = '✅ Folder selected! Ready to analyze.';
           statusMessage.className = 'status-message success visible';
           actionButtons.style.display = 'flex';
           results.classList.remove('visible');
@@ -352,11 +352,11 @@
         results.classList.remove('visible');
       });
 
-      // Handle analyse button
-      analyseBtn.addEventListener('click', async () => {
+      // Handle analyze button
+      analyzeBtn.addEventListener('click', async () => {
         // Show loading state
-        analyseBtn.disabled = true;
-        analyseBtn.innerHTML = '🔍 Analysing... <span class="spinner"></span>';
+        analyzeBtn.disabled = true;
+        analyzeBtn.innerHTML = '🔍 Analyzing... <span class="spinner"></span>';
         statusMessage.textContent = '⏳ Reading photos and EXIF data...';
         statusMessage.className = 'status-message info visible';
         results.classList.remove('visible');
@@ -375,11 +375,12 @@
             results.classList.add('visible');
           }
         } catch (error) {
+          console.error('Error analyzing photos:', error);
           statusMessage.textContent = `❌ Unexpected error: ${error.message}`;
           statusMessage.className = 'status-message error visible';
         } finally {
-          analyseBtn.disabled = false;
-          analyseBtn.innerHTML = '🔍 Analyse Photos';
+          analyzeBtn.disabled = false;
+          analyzeBtn.innerHTML = '🔍 Analyze Photos';
         }
       });
 
@@ -483,7 +484,7 @@
         // Confirmation dialog
         const confirmation = confirm(
           `⚠️ WARNING: This will move and rename files!\n\n` +
-            `Are you sure you want to organise photos in:\n${selectedFolder}\n\n` +
+            `Are you sure you want to organize photos in:\n${selectedFolder}\n\n` +
             `This action cannot be undone through the app.`
         );
 
@@ -494,7 +495,7 @@
         // Show loading state
         organizeBtn.disabled = true;
         organizeBtn.innerHTML =
-          '✨ Organising... <span class="spinner"></span>';
+          '✨ Organizing... <span class="spinner"></span>';
         statusMessage.textContent = '⏳ Creating folders and moving files...';
         statusMessage.className = 'status-message info visible';
 
@@ -505,7 +506,7 @@
 
           if (result.success) {
             displayFinalResults(result);
-            statusMessage.textContent = '✅ Organisation complete!';
+            statusMessage.textContent = '✅ Organization complete!';
             statusMessage.className = 'status-message success visible';
           } else {
             statusMessage.textContent = `❌ Error: ${result.error}`;
@@ -516,7 +517,7 @@
           statusMessage.className = 'status-message error visible';
         } finally {
           organizeBtn.disabled = false;
-          organizeBtn.innerHTML = '✨ Organise Photos';
+          organizeBtn.innerHTML = '✨ Organize Photos';
         }
       });
 
@@ -525,7 +526,7 @@
     <div class="stats">
       <div class="stat-card">
         <div class="stat-number" style="color: #28a745;">${result.successCount}</div>
-        <div class="stat-label">Files organised</div>
+        <div class="stat-label">Files organized</div>
       </div>
       <div class="stat-card">
         <div class="stat-number">${result.totalDates}</div>
