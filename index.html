@@ -279,6 +279,26 @@
           <h2 style="margin-bottom: 15px; color: #333">Analysis Results</h2>
 
           <div id="resultsContent"></div>
+
+          <div
+            class="button-group"
+            style="margin-top: 20px; display: none"
+            id="organizeButtonGroup"
+          >
+            <button id="organizeBtn" style="background: #28a745">
+              ✨ Organise Photos
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="results" id="finalResults">
+        <div class="card">
+          <h2 style="margin-bottom: 15px; color: #333">
+            ✅ Organisation Complete!
+          </h2>
+
+          <div id="finalResultsContent"></div>
         </div>
       </div>
     </div>
@@ -294,6 +314,14 @@
       const clearBtn = document.getElementById('clearBtn');
       const results = document.getElementById('results');
       const resultsContent = document.getElementById('resultsContent');
+      const organizeBtn = document.getElementById('organizeBtn');
+      const organizeButtonGroup = document.getElementById(
+        'organizeButtonGroup'
+      );
+      const finalResults = document.getElementById('finalResults');
+      const finalResultsContent = document.getElementById(
+        'finalResultsContent'
+      );
 
       let selectedFolder = null;
 
@@ -328,13 +356,13 @@
       analyseBtn.addEventListener('click', async () => {
         // Show loading state
         analyseBtn.disabled = true;
-        analyseBtn.innerHTML = '🔍 Analyzing... <span class="spinner"></span>';
+        analyseBtn.innerHTML = '🔍 Analysing... <span class="spinner"></span>';
         statusMessage.textContent = '⏳ Reading photos and EXIF data...';
         statusMessage.className = 'status-message info visible';
         results.classList.remove('visible');
 
         try {
-          const result = await window.electronAPI.analysePhotos(selectedFolder);
+          const result = await window.electronAPI.analyzePhotos(selectedFolder);
 
           if (result.success) {
             displayResults(result);
@@ -351,7 +379,7 @@
           statusMessage.className = 'status-message error visible';
         } finally {
           analyseBtn.disabled = false;
-          analyseBtn.innerHTML = '🔍 analyse Photos';
+          analyseBtn.innerHTML = '🔍 Analyse Photos';
         }
       });
 
@@ -439,10 +467,121 @@
 
         resultsContent.innerHTML = html;
         results.classList.add('visible');
+
+        // Show organize button
+        organizeButtonGroup.style.display = 'flex';
+
+        // Hide final results if showing
+        finalResults.classList.remove('visible');
       }
 
       // Show initial message
       statusMessage.classList.add('visible');
+
+      // Handle organize button
+      organizeBtn.addEventListener('click', async () => {
+        // Confirmation dialog
+        const confirmation = confirm(
+          `⚠️ WARNING: This will move and rename files!\n\n` +
+            `Are you sure you want to organise photos in:\n${selectedFolder}\n\n` +
+            `This action cannot be undone through the app.`
+        );
+
+        if (!confirmation) {
+          return;
+        }
+
+        // Show loading state
+        organizeBtn.disabled = true;
+        organizeBtn.innerHTML =
+          '✨ Organising... <span class="spinner"></span>';
+        statusMessage.textContent = '⏳ Creating folders and moving files...';
+        statusMessage.className = 'status-message info visible';
+
+        try {
+          const result = await window.electronAPI.organizePhotos(
+            selectedFolder
+          );
+
+          if (result.success) {
+            displayFinalResults(result);
+            statusMessage.textContent = '✅ Organisation complete!';
+            statusMessage.className = 'status-message success visible';
+          } else {
+            statusMessage.textContent = `❌ Error: ${result.error}`;
+            statusMessage.className = 'status-message error visible';
+          }
+        } catch (error) {
+          statusMessage.textContent = `❌ Unexpected error: ${error.message}`;
+          statusMessage.className = 'status-message error visible';
+        } finally {
+          organizeBtn.disabled = false;
+          organizeBtn.innerHTML = '✨ Organise Photos';
+        }
+      });
+
+      function displayFinalResults(result) {
+        let html = `
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-number" style="color: #28a745;">${result.successCount}</div>
+        <div class="stat-label">Files organised</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">${result.totalDates}</div>
+        <div class="stat-label">Date Folders</div>
+      </div>
+  `;
+
+        if (result.skippedCount > 0) {
+          html += `
+      <div class="stat-card">
+        <div class="stat-number" style="color: #ff9800;">${result.skippedCount}</div>
+        <div class="stat-label">Skipped</div>
+      </div>
+    `;
+        }
+
+        if (result.errorCount > 0) {
+          html += `
+      <div class="stat-card">
+        <div class="stat-number" style="color: #dc3545;">${result.errorCount}</div>
+        <div class="stat-label">Errors</div>
+      </div>
+    `;
+        }
+
+        html += `</div>`;
+
+        // Show dates created
+        if (result.dates && result.dates.length > 0) {
+          html += `
+      <div class="status-message success visible" style="margin-top: 20px;">
+        📁 Created folders for dates: <strong>${result.dates.join(
+          ', '
+        )}</strong>
+      </div>
+    `;
+        }
+
+        // Show errors if any
+        if (result.errors && result.errors.length > 0) {
+          html += `
+      <div class="status-message error visible" style="margin-top: 15px;">
+        <strong>Errors encountered:</strong>
+        <ul style="margin-top: 10px; padding-left: 20px;">
+    `;
+          result.errors.forEach((err) => {
+            html += `<li>${err.file}: ${err.error}</li>`;
+          });
+          html += `</ul></div>`;
+        }
+
+        finalResultsContent.innerHTML = html;
+        finalResults.classList.add('visible');
+        results.classList.remove('visible');
+        organizeButtonGroup.style.display = 'none';
+      }
     </script>
   </body>
 </html>

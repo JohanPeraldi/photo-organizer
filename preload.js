@@ -4,7 +4,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('dialog:openFolder'),
-  analysePhotos: (folderPath) => ipcRenderer.invoke('photos:analyse', folderPath)
+  analyzePhotos: (folderPath) => ipcRenderer.invoke('photos:analyze', folderPath),
+  organizePhotos: (folderPath) => ipcRenderer.invoke('photos:organize', folderPath)
 });
 
 console.log('Preload script loaded successfully!');

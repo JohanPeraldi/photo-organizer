@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { analyseFolder } from './photo-service.js';
+import { analyzeFolder, organizePhotos, cleanup } from './photo-service.js';
 
 // ES modules don't have __dirname, so we create it
 const __filename = fileURLToPath(import.meta.url);
@@ -37,8 +37,13 @@ ipcMain.handle('dialog:openFolder', async () => {
 });
 
 // Handle photo analysis
-ipcMain.handle('photos:analyse', async (event, folderPath) => {
-  return await analyseFolder(folderPath);
+ipcMain.handle('photos:analyze', async (event, folderPath) => {
+  return await analyzeFolder(folderPath);
+});
+
+// Handle photo organization
+ipcMain.handle('photos:organize', async (event, folderPath) => {
+  return await organizePhotos(folderPath);
 });
 
 app.whenReady().then(() => {
@@ -51,8 +56,16 @@ app.whenReady().then(() => {
   });
 });
 
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
+  // Clean up exiftool before quitting
+  await cleanup();
+  
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+// Also add cleanup when the app is about to quit
+app.on('before-quit', async () => {
+  await cleanup();
 });
